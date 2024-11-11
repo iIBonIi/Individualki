@@ -4,42 +4,58 @@
 #include <thread>
 #include <chrono>
 
-void checkImt(double imt, const std::string& responseFile) {
-    std::string response;
-    
-    // Проверка ИМТ и формирование ответа
-    if (imt < 18.5) {
-        response = "Недостаточный вес";
-    } else if (imt >= 18.5 && imt < 24.9) {
-        response = "Норма";
-    } else {
-        response = "Избыточный вес";
-    }
+using namespace std;
 
-    // Запись ответа в файл
-    std::ofstream ofs(responseFile);
-    if (ofs.is_open()) {
-        ofs << response;
-        ofs.close();
-    } else {
-        std::cout << "Ошибка при открытии файла для записи ответа." << std::endl;
+double calculateBMI(double weight, double height) {
+    return weight / (height * height);
+}
+
+string analyzeBMI(double bmi) {
+    if (bmi < 18.5) {
+        return "Недостаточность веса";
+    }
+    else if (bmi >= 18.5 && bmi < 24.9) {
+        return "Норма";
+    }
+    else {
+        return "Избыточный вес";
     }
 }
 
+void processClientData(const string& inputFile, const string& outputFile) {
+    ifstream input(inputFile);
+    if (!input.is_open()) {
+        cerr << "Не удалось открыть файл для чтения: " << inputFile << endl;
+        return;
+    }
+
+    double weight, height;
+    input >> weight >> height;
+    input.close();
+
+    double bmi = calculateBMI(weight, height);
+    string result = analyzeBMI(bmi);
+
+    ofstream output(outputFile);
+    if (!output.is_open()) {
+        cerr << "Не удалось открыть файл для записи: " << outputFile << endl;
+        return;
+    }
+
+    output << "ИМТ: " << bmi << "\n" << result << endl;
+    output.close();
+}
+
 int main() {
-    double imt;
-
-    // Чтение ИМТ из файла
     while (true) {
-        std::this_thread::sleep_for(std::chrono::seconds(1)); // Простая задержка перед проверкой
+        if (ifstream("client_data.txt").good()) {
+            cout << "Обработка данных клиента..." << endl;
+            processClientData("client_data.txt", "server_response.txt");
 
-        std::ifstream ifs("imt.txt");
-        if (ifs.is_open()) {
-            ifs >> imt;
-            ifs.close();
-            std::cout << "Получен ИМТ: " << imt << std::endl;
-            checkImt(imt, "response.txt"); // Проверка ИМТ и отправка ответа
-            break; // Выходим из цикла после получения ИМТ
+            this_thread::sleep_for(chrono::seconds(1));
+            cout << "Ответ отправлен клиенту." << endl;
         }
     }
+
+    return 0;
 }
