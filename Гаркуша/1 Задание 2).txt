@@ -1,0 +1,57 @@
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <thread>
+#include <chrono>
+
+void writeRequestToFile(const std::string& filename, const std::string& request) {
+    std::ofstream file(filename, std::ios::app);  // Открытие файла для дозаписи
+    if (file.is_open()) {
+        file << request << std::endl;
+        file.close();
+    }
+    else {
+        std::cerr << "Не удалось открыть файл для записи!" << std::endl;
+    }
+}
+
+std::string readResponseFromFile(const std::string& filename) {
+    std::ifstream file(filename);
+    std::string response;
+    if (file.is_open()) {
+        std::getline(file, response);
+        file.close();
+    }
+    else {
+        std::cerr << "Не удалось открыть файл для чтения!" << std::endl;
+    }
+    return response;
+}
+
+int main() {
+    const std::string requestFile = "f1.txt";
+    const std::string responseFile = "f2.txt";
+
+    while (true) {
+
+        setlocale(LC_ALL, "");
+
+        std::string request;
+        std::cout << "Введите запрос: ";
+        std::getline(std::cin, request);
+
+        // Запись запроса в файл f1
+        writeRequestToFile(requestFile, request);
+
+        // Ожидание ответа от сервера
+        std::string response;
+        while (response.empty()) {
+            response = readResponseFromFile(responseFile);
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+        }
+
+        std::cout << "Ответ сервера: " << response << std::endl;
+    }
+
+    return 0;
+}
