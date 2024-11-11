@@ -1,0 +1,223 @@
+#include <winsock2.h>
+#include <iostream>
+#include <string>
+#include <cstring>
+
+#pragma comment(lib, "ws2_32.lib")
+
+#define PORT 12345
+
+// Структура для передачи данных
+struct Message {
+    int id;
+    std::string message;
+    
+    // Сериализация структуры в строку
+    int serialize(char *buffer) const {
+        int offset = 0;
+        memcpy(buffer + offset, &id, sizeof(id));
+        offset += sizeof(id);
+        memcpy(buffer + offset, message.c_str(), message.length() + 1);
+        return offset + message.length() + 1;
+    }
+    
+    // Десериализация из строки
+    void deserialize(const char *buffer) {
+        int offset = 0;
+        memcpy(&id, buffer + offset, sizeof(id));
+        offset += sizeof(id);
+        message = buffer + offset;
+    }
+};
+
+// Класс для работы с сокетами
+class SocketWrapper {
+protected:
+    SOCKET sock;
+    sockaddr_in addr;
+
+    void init() {
+        WSADATA wsaData;
+        if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
+            throw std::runtime_error("WSAStartup failed");
+        }
+    }
+
+    void cleanup() {
+        closesocket(sock);
+        WSACleanup();
+    }
+
+public:
+    SocketWrapper() : sock(INVALID_SOCKET) {
+        init();
+    }
+
+    virtual ~SocketWrapper() {
+        if (sock != INVALID_SOCKET) cleanup();
+    }
+
+    void setAddr(const std::string& ip, uint16_t port) {
+        memset(&addr, 0, sizeof(addr));
+        addr.sin_family = AF_INET;
+        addr.sin_addr.s_addr = inet_addr(ip.c_str());
+        addr.sin_port = htons(port);
+    }
+};
+
+// Класс для TCP-сервера
+class TCPServer : public SocketWrapper {
+public:
+    TCPServer(uint16_t port) {
+        sock = socket(AF_INET, SOCK_STREAM, 0);
+        if (sock == INVALID_SOCKET) throw std::runtime_error("Socket creation failed");
+        
+        setAddr("0.0.0.0", port);
+
+        if (bind(sock, reinterpret_cast<struct sockaddr*>(&addr), sizeof(addr)) == SOCKET_ERROR) {
+            throw std::runtime_error("Bind failed");
+        }
+
+        if (listen(sock, SOMAXCONN) == SOCKET_ERROR) {
+            throw std::runtime_error("Listen failed");
+        }
+    }
+
+    void start() {
+        sockaddr_in clientAddr;
+        int clientAddrSize = sizeof(clientAddr);
+        SOCKET clientSock = accept(sock, reinterpret_cast<struct sockaddr*>(&clientAddr), &clientAddrSize);
+        if (clientSock == INVALID_SOCKET) {
+            std::cerr << "Accept failed" << std::endl;
+            return;
+        }
+
+        std::cout << "Client connected\n";
+        
+        char buffer[1024];
+        while (true) {
+            int bytesReceived = recv(clientSock, buffer, sizeof(buffer), 0);
+            if (bytesReceived <= 0) break;
+
+            Message msg;
+            msg.deserialize(buffer);
+            std::cout << "Received from client: ID = " << msg.id << ", Message = " << msg.message << std::endl;
+
+            send(clientSock, buffer, bytesReceived, 0); // Эхо
+        }
+
+        std::cout << "Client disconnected\n";
+        closesocket(clientSock);
+    }
+};
+
+// Класс для TCP-клиента
+class TCPClient : public SocketWrapper {
+public:
+    TCPClient(const std::string& server_ip, uint16_t port) {
+        sock = socket(AF_INET, SOCK_STREAM, 0);
+        if (sock == INVALID_SOCKET) throw std::runtime_error("Socket creation failed");
+        
+        setAddr(server_ip, port);
+
+        if (connect(sock, reinterpret_cast<struct sockaddr*>(&addr), sizeof(addr)) == SOCKET_ERROR) {
+            throw std::runtime_error("Connection failed");
+        }
+    }
+
+    void sendMessage(const Message& msg) {
+        char buffer[1024];
+        int msgSize = msg.serialize(buffer);
+        send(sock, buffer, msgSize, 0);
+        
+        // Получение ответа
+        int bytesReceived = recv(sock, buffer, sizeof(buffer), 0);
+        if (bytesReceived > 0) {
+            Message response;
+            response.deserialize(buffer);
+            std::cout << "Received from server: ID = " << response.id << ", Message = " << response.message << std::endl;
+        }
+    }
+};
+
+// Класс для UDP-сервера
+class UDPServer : public SocketWrapper {
+public:
+    UDPServer(uint16_t port) {
+        sock = socket(AF_INET, SOCK_DGRAM, 0);
+        if (sock == INVALID_SOCKET) throw std::runtime_error("Socket creation failed");
+        
+        setAddr("0.0.0.0", port);
+
+        if (bind(sock, reinterpret_cast<struct sockaddr*>(&addr), sizeof(addr)) == SOCKET_ERROR) {
+            throw std::runtime_error("Bind failed");
+        }
+    }
+
+    void start() {
+        sockaddr_in clientAddr;
+        int clientAddrSize = sizeof(clientAddr);
+        char buffer[1024];
+        
+        while (true) {
+            int bytesReceived = recvfrom(sock, buffer, sizeof(buffer), 0, reinterpret_cast<struct sockaddr*>(&clientAddr), &clientAddrSize);
+            if (bytesReceived == SOCKET_ERROR) {
+                std::cerr << "Receive failed" << std::endl;
+                continue;
+            }
+
+            Message msg;
+            msg.deserialize(buffer);
+            std::cout << "Received from client: ID = " << msg.id << ", Message = " << msg.message << std::endl;
+
+            sendto(sock, buffer, bytesReceived, 0, reinterpret_cast<struct sockaddr*>(&clientAddr), clientAddrSize);
+        }
+    }
+};
+
+// Класс для UDP-клиента
+class UDPClient : public SocketWrapper {
+public:
+    UDPClient(const std::string& server_ip, uint16_t port) {
+        sock = socket(AF_INET, SOCK_DGRAM, 0);
+        if (sock == INVALID_SOCKET) throw std::runtime_error("Socket creation failed");
+        
+        setAddr(server_ip, port);
+    }
+
+    void sendMessage(const Message& msg) {
+        char buffer[1024];
+        int msgSize = msg.serialize(buffer);
+        sendto(sock, buffer, msgSize, 0, reinterpret_cast<struct sockaddr*>(&addr), sizeof(addr));
+
+        // Получение ответа
+        sockaddr_in serverAddr;
+        int serverAddrSize = sizeof(serverAddr);
+        int bytesReceived = recvfrom(sock, buffer, sizeof(buffer), 0, reinterpret_cast<struct sockaddr*>(&serverAddr), &serverAddrSize);
+        if (bytesReceived > 0) {
+            Message response;
+            response.deserialize(buffer);
+            std::cout << "Received from server: ID = " << response.id << ", Message = " << response.message << std::endl;
+        }
+    }
+};
+
+int main() {
+    try {
+        // Пример для TCP-сервера и клиента
+        TCPServer tcpServer(PORT);
+        std::thread serverThread([&tcpServer](){ tcpServer.start(); });
+
+        std::this_thread::sleep_for(std::chrono::seconds(1)); // Даем серверу время для старта
+
+        TCPClient tcpClient("127.0.0.1", PORT);
+        Message msg{1, "Hello TCP"};
+        tcpClient.sendMessage(msg);
+
+        serverThread.join(); // Ждем завершения работы сервера
+    } catch (const std::exception &e) {
+        std::cerr << "Error: " << e.what() << std::endl;
+    }
+
+    return 0;
+}
