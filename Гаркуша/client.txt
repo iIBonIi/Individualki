@@ -3,57 +3,48 @@
 #include <string>
 #include <thread>
 #include <chrono>
-#include <mutex>
 
-std::mutex mtx; // Мьютекс для защиты доступа к консоли
-
-void sendImt(double imt) {
-    // Отправка ИМТ на сервер в файл
-    std::ofstream ofs("imt.txt");
-    if (ofs.is_open()) {
-        ofs << imt;
-        ofs.close();
-        std::cout << "ИМТ " << imt << " успешно отправлен на сервер." << std::endl;
-    } else {
-        std::cout << "Ошибка при открытии файла для записи." << std::endl;
-    }
-}
-
-void readResponse() {
-    std::string response;
-    
-    // Чтение ответа от сервера из файла
-    while (true) {
-        std::this_thread::sleep_for(std::chrono::seconds(1)); // Простая задержка перед проверкой
-
-        std::ifstream ifs("response.txt");
-        if (ifs.is_open()) {
-            std::getline(ifs, response);
-            if (!response.empty()) {
-                mtx.lock();
-                std::cout << "Ответ от сервера: " << response << std::endl;
-                mtx.unlock();
-                ifs.close();
-                break; // Выходим из цикла после получения ответа
-            }
-            ifs.close();
-        }
-    }
-}
+using namespace std;
 
 int main() {
-    double imt;
 
-    // Запрашиваем ИМТ у пользователя
-    std::cout << "Введите ваш ИМТ: ";
-    std::cin >> imt;
+    setlocale(LC_ALL, "Russian");
 
-    // Запускаем новые потоки для отправки ИМТ и чтения ответа
-    std::thread sender(sendImt, imt);
-    std::thread responder(readResponse);
+    double weight, height;
 
-    sender.join(); // Ждем завершения отправки
-    responder.join(); // Ждем завершения чтения ответа
+    cout << "Введите ваш вес (кг): ";
+    cin >> weight;
+    cout << "Введите ваш рост (м): ";
+    cin >> height;
+
+    ofstream clientFile("client_data.txt");
+    if (!clientFile.is_open()) {
+        cerr << "Не удалось создать файл для записи данных клиента." << endl;
+        return -1;
+    }
+    clientFile << weight << " " << height << endl;
+    clientFile.close();
+
+    cout << "Данные отправлены на сервер. Ожидайте ответа..." << endl;
+
+    while (!ifstream("server_response.txt").good()) {
+        this_thread::sleep_for(chrono::seconds(1));
+    }
+
+    ifstream serverResponse("server_response.txt");
+    if (!serverResponse.is_open()) {
+        cerr << "Не удалось открыть файл с ответом сервера." << endl;
+        return -1;
+    }
+
+    string response;
+    string line;
+    while (getline(serverResponse, line)) {
+        response += line + "\n";
+    }
+    serverResponse.close();
+
+    cout << "Ответ от сервера:\n" << response << endl;
 
     return 0;
 }
