@@ -1,69 +1,45 @@
 #include <iostream>
-#include <cstring>
-#include <arpa/inet.h>
-#include <unistd.h>
+#include <fstream>
+#include <string>
+#include <thread>
+#include <chrono>
 
-void checkImt(double imt, char* response) {
+void checkImt(double imt, const std::string& responseFile) {
+    std::string response;
+    
+    // Проверка ИМТ и формирование ответа
     if (imt < 18.5) {
-        strcpy(response, "Недостаточный вес");
+        response = "Недостаточный вес";
     } else if (imt >= 18.5 && imt < 24.9) {
-        strcpy(response, "Норма");
+        response = "Норма";
     } else {
-        strcpy(response, "Избыточный вес");
+        response = "Избыточный вес";
+    }
+
+    // Запись ответа в файл
+    std::ofstream ofs(responseFile);
+    if (ofs.is_open()) {
+        ofs << response;
+        ofs.close();
+    } else {
+        std::cout << "Ошибка при открытии файла для записи ответа." << std::endl;
     }
 }
 
 int main() {
-    int server_fd, new_socket;
-    struct sockaddr_in address;
-    int opt = 1;
-    int addrlen = sizeof(address);
     double imt;
-    char response[256];
 
-    // Создаем сокет
-    if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
-        std::cout << "Ошибка создания сокета" << std::endl;
-        return -1;
+    // Чтение ИМТ из файла
+    while (true) {
+        std::this_thread::sleep_for(std::chrono::seconds(1)); // Простая задержка перед проверкой
+
+        std::ifstream ifs("imt.txt");
+        if (ifs.is_open()) {
+            ifs >> imt;
+            ifs.close();
+            std::cout << "Получен ИМТ: " << imt << std::endl;
+            checkImt(imt, "response.txt"); // Проверка ИМТ и отправка ответа
+            break; // Выходим из цикла после получения ИМТ
+        }
     }
-
-    // Настраиваем сокет
-    setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
-
-    // Задаем параметры адреса
-    address.sin_family = AF_INET;
-    address.sin_addr.s_addr = INADDR_ANY;
-    address.sin_port = htons(8080);
-
-    // Привязываем сокет к порту
-    if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0) {
-        std::cout << "Ошибка привязки" << std::endl;
-        return -1;
-    }
-
-    // Начинаем прослушивание
-    if (listen(server_fd, 3) < 0) {
-        std::cout << "Ошибка прослушивания" << std::endl;
-        return -1;
-    }
-
-    std::cout << "Ожидание подключения..." << std::endl;
-
-    // Принимаем соединение
-    if ((new_socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen)) < 0) {
-        std::cout << "Ошибка принятия соединения" << std::endl;
-        return -1;
-    }
-
-    // Получаем ИМТ от клиента
-    read(new_socket, &imt, sizeof(imt));
-    checkImt(imt, response);
-
-    // Отправляем ответ клиенту
-    send(new_socket, response, strlen(response), 0);
-
-    // Закрываем сокеты
-    close(new_socket);
-    close(server_fd);
-    return 0;
 }
