@@ -1,3 +1,6 @@
+Сервер (server.cpp)
+
+```cpp
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -6,22 +9,23 @@
 
 using namespace std;
 
+// Функция для вычисления ИМТ
 double calculateBMI(double weight, double height) {
     return weight / (height * height);
 }
 
+// Функция для анализа ИМТ
 string analyzeBMI(double bmi) {
     if (bmi < 18.5) {
         return "Недостаточность веса";
-    }
-    else if (bmi >= 18.5 && bmi < 24.9) {
+    } else if (bmi >= 18.5 && bmi < 24.9) {
         return "Норма";
-    }
-    else {
+    } else {
         return "Избыточный вес";
     }
 }
 
+// Функция для обработки файла с данными
 void processClientData(const string& inputFile, const string& outputFile) {
     ifstream input(inputFile);
     if (!input.is_open()) {
@@ -33,9 +37,11 @@ void processClientData(const string& inputFile, const string& outputFile) {
     input >> weight >> height;
     input.close();
 
+    // Подсчитываем ИМТ
     double bmi = calculateBMI(weight, height);
     string result = analyzeBMI(bmi);
 
+    // Записываем результат в файл
     ofstream output(outputFile);
     if (!output.is_open()) {
         cerr << "Не удалось открыть файл для записи: " << outputFile << endl;
@@ -48,10 +54,12 @@ void processClientData(const string& inputFile, const string& outputFile) {
 
 int main() {
     while (true) {
+        // Проверяем наличие файла с запросом от клиента
         if (ifstream("client_data.txt").good()) {
             cout << "Обработка данных клиента..." << endl;
             processClientData("client_data.txt", "server_response.txt");
-
+            
+            // Имитация задержки на обработку
             this_thread::sleep_for(chrono::seconds(1));
             cout << "Ответ отправлен клиенту." << endl;
         }
@@ -59,3 +67,5 @@ int main() {
 
     return 0;
 }
+
+```
