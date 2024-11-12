@@ -1,3 +1,5 @@
+Клиент (client.cpp)
+```cpp
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -7,16 +9,17 @@
 using namespace std;
 
 int main() {
-
     setlocale(LC_ALL, "Russian");
 
     double weight, height;
 
+    // Вводим данные от пользователя
     cout << "Введите ваш вес (кг): ";
     cin >> weight;
     cout << "Введите ваш рост (м): ";
     cin >> height;
 
+    // Записываем данные клиента в файл
     ofstream clientFile("client_data.txt");
     if (!clientFile.is_open()) {
         cerr << "Не удалось создать файл для записи данных клиента." << endl;
@@ -27,10 +30,12 @@ int main() {
 
     cout << "Данные отправлены на сервер. Ожидайте ответа..." << endl;
 
+    // Ожидаем, пока сервер обработает данные
     while (!ifstream("server_response.txt").good()) {
         this_thread::sleep_for(chrono::seconds(1));
     }
 
+    // Читаем результат из файла
     ifstream serverResponse("server_response.txt");
     if (!serverResponse.is_open()) {
         cerr << "Не удалось открыть файл с ответом сервера." << endl;
@@ -44,7 +49,9 @@ int main() {
     }
     serverResponse.close();
 
+    // Выводим ответ сервера
     cout << "Ответ от сервера:\n" << response << endl;
 
     return 0;
 }
+```
