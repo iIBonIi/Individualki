@@ -1,57 +1,48 @@
-Клиент (client.cpp)
-```cpp
 #include <iostream>
 #include <fstream>
 #include <string>
 #include <thread>
 #include <chrono>
 
-using namespace std;
+void send_data_to_server(const std::string& client_file, double weight, double height) {
+    
+    std::ofstream client_data(client_file, std::ios::trunc);
+    if (client_data.is_open()) {
+        client_data << weight << " " << height << std::endl;
+    }
+    else {
+        std::cerr << "Не удалось открыть файл клиента." << std::endl;
+    }
+}
 
 int main() {
-    setlocale(LC_ALL, "Russian");
 
-    double weight, height;
+    setlocale(LC_ALL, "RU");
 
-    // Вводим данные от пользователя
-    cout << "Введите ваш вес (кг): ";
-    cin >> weight;
-    cout << "Введите ваш рост (м): ";
-    cin >> height;
+    const std::string client_file = "client_data.txt";
+    const std::string server_file = "server_response.txt";
 
-    // Записываем данные клиента в файл
-    ofstream clientFile("client_data.txt");
-    if (!clientFile.is_open()) {
-        cerr << "Не удалось создать файл для записи данных клиента." << endl;
-        return -1;
+    while (true) {
+        double weight, height;
+        std::cout << "Введите вес (кг): ";
+        std::cin >> weight;
+        std::cout << "Введите рост (см): ";
+        std::cin >> height;
+
+        send_data_to_server(client_file, weight, height);
+
+        std::this_thread::sleep_for(std::chrono::seconds(2));
+
+        std::ifstream server_response(server_file, std::ios::in);
+        if (server_response.is_open()) {
+            std::string line;
+            std::getline(server_response, line);
+            std::cout << line << std::endl;
+        }
+        else {
+            std::cerr << "Не удалось открыть файл сервера." << std::endl;
+        }
     }
-    clientFile << weight << " " << height << endl;
-    clientFile.close();
-
-    cout << "Данные отправлены на сервер. Ожидайте ответа..." << endl;
-
-    // Ожидаем, пока сервер обработает данные
-    while (!ifstream("server_response.txt").good()) {
-        this_thread::sleep_for(chrono::seconds(1));
-    }
-
-    // Читаем результат из файла
-    ifstream serverResponse("server_response.txt");
-    if (!serverResponse.is_open()) {
-        cerr << "Не удалось открыть файл с ответом сервера." << endl;
-        return -1;
-    }
-
-    string response;
-    string line;
-    while (getline(serverResponse, line)) {
-        response += line + "\n";
-    }
-    serverResponse.close();
-
-    // Выводим ответ сервера
-    cout << "Ответ от сервера:\n" << response << endl;
 
     return 0;
 }
-```
