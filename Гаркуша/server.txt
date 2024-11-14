@@ -1,71 +1,78 @@
-Сервер (server.cpp)
-
-```cpp
 #include <iostream>
 #include <fstream>
 #include <string>
 #include <thread>
 #include <chrono>
+#include <mutex>
 
-using namespace std;
+std::mutex file_mutex;
 
-// Функция для вычисления ИМТ
-double calculateBMI(double weight, double height) {
+double calculate_bmi(double weight, double height) {
+    height /= 100.0;
     return weight / (height * height);
 }
 
-// Функция для анализа ИМТ
-string analyzeBMI(double bmi) {
-    if (bmi < 18.5) {
-        return "Недостаточность веса";
-    } else if (bmi >= 18.5 && bmi < 24.9) {
-        return "Норма";
-    } else {
-        return "Избыточный вес";
+void process_client_data(const std::string& client_file, const std::string& server_file) {
+    while (true) {
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+
+        std::lock_guard<std::mutex> lock(file_mutex);
+
+        std::ifstream client_data(client_file, std::ios::in);
+        if (!client_data.is_open()) {
+            std::cerr << "Не удалось открыть файл клиента." << std::endl;
+            return;
+        }
+
+        std::string line;
+        std::string last_line;
+        while (std::getline(client_data, line)) {
+            last_line = line;
+        }
+
+        client_data.close();
+
+
+        if (!last_line.empty()) {
+            double weight, height;
+            size_t pos = last_line.find(' ');
+            if (pos != std::string::npos) {
+                weight = std::stod(last_line.substr(0, pos));
+                height = std::stod(last_line.substr(pos + 1));
+
+
+                double bmi = calculate_bmi(weight, height);
+
+
+                std::ofstream server_response(server_file, std::ios::trunc);
+                if (server_response.is_open()) {
+                    server_response << "ИМТ: " << bmi << std::endl;
+                }
+                else {
+                    std::cerr << "Не удалоысь открыть файл сервера." << std::endl;
+                }
+            }
+        }
     }
-}
-
-// Функция для обработки файла с данными
-void processClientData(const string& inputFile, const string& outputFile) {
-    ifstream input(inputFile);
-    if (!input.is_open()) {
-        cerr << "Не удалось открыть файл для чтения: " << inputFile << endl;
-        return;
-    }
-
-    double weight, height;
-    input >> weight >> height;
-    input.close();
-
-    // Подсчитываем ИМТ
-    double bmi = calculateBMI(weight, height);
-    string result = analyzeBMI(bmi);
-
-    // Записываем результат в файл
-    ofstream output(outputFile);
-    if (!output.is_open()) {
-        cerr << "Не удалось открыть файл для записи: " << outputFile << endl;
-        return;
-    }
-
-    output << "ИМТ: " << bmi << "\n" << result << endl;
-    output.close();
 }
 
 int main() {
+
+    setlocale(LC_ALL, "RU");
+
+    const std::string client_file = "client_data.txt";
+    const std::string server_file = "server_response.txt";
+
+
+    std::thread server_thread(process_client_data, client_file, server_file);
+
+
+    std::cout << "Сервер работает... Нажмите Ctrl+C для завершения." << std::endl;
     while (true) {
-        // Проверяем наличие файла с запросом от клиента
-        if (ifstream("client_data.txt").good()) {
-            cout << "Обработка данных клиента..." << endl;
-            processClientData("client_data.txt", "server_response.txt");
-            
-            // Имитация задержки на обработку
-            this_thread::sleep_for(chrono::seconds(1));
-            cout << "Ответ отправлен клиенту." << endl;
-        }
+        std::this_thread::sleep_for(std::chrono::seconds(10));
     }
+
+    server_thread.join();
 
     return 0;
 }
-
-```
