@@ -1,0 +1,108 @@
+#include <iostream>
+#include <fstream>
+#include <cmath>
+
+using namespace std;
+
+const double EPS = 1e-10;
+
+int main() {
+    int n;
+    cin >> n;
+
+    double** matrix = new double* [n];
+    for (int i = 0; i < n; ++i) {
+        matrix[i] = new double[n + 1];
+        for (int j = 0; j <= n; ++j) {
+            cin >> matrix[i][j];
+        }
+    }
+
+    for (int i = 0; i < n; ++i) {
+        int maxRow = i;
+        for (int k = i + 1; k < n; ++k) {
+            if (fabs(matrix[k][i]) > fabs(matrix[maxRow][i])) {
+                maxRow = k;
+            }
+        }
+
+        if (maxRow != i) {
+            swap(matrix[i], matrix[maxRow]);
+        }
+
+        if (fabs(matrix[i][i]) < EPS) {
+            continue;
+        }
+
+        double div = matrix[i][i];
+        for (int j = i; j <= n; ++j) {
+            matrix[i][j] /= div;
+        }
+
+        for (int k = i + 1; k < n; ++k) {
+            double factor = matrix[k][i];
+            for (int j = i; j <= n; ++j) {
+                matrix[k][j] -= factor * matrix[i][j];
+            }
+        }
+    }
+
+    bool noSolution = false;
+    bool infinite = false;
+    int rank = 0;
+    for (int i = 0; i < n; ++i) {
+        bool allZero = true;
+        for (int j = 0; j < n; ++j) {
+
+            if (fabs(matrix[i][j]) > EPS) {
+                allZero = false;
+                break;
+            }
+        }
+        if (allZero) {
+            if (fabs(matrix[i][n]) > EPS) {
+                noSolution = true;
+                break;
+            }
+            else {
+                infinite = true;
+            }
+        }
+        else {
+            rank++;
+        }
+    }
+
+    ofstream out("output.txt");
+    if (noSolution) {
+        out << "Net re6eniya";
+    }
+    else if (infinite || rank < n) {
+        out << "Beskone4noe re6enie";
+    }
+    else {
+        double* x = new double[n];
+        for (int i = n - 1; i >= 0; --i) {
+            x[i] = matrix[i][n];
+            for (int j = i + 1; j < n; ++j) {
+                x[i] -= matrix[i][j] * x[j];
+            }
+            x[i] /= matrix[i][i];
+        }
+        for (int i = 0; i < n; ++i) {
+            out << x[i] << " ";
+        }
+        delete[] x;
+    }
+    out.close();
+
+    for (int i = 0; i < n; ++i) {
+        delete[] matrix[i];
+    }
+    delete[] matrix;
+}
+
+3
+1 1 1 6
+2 3 1 11
+1 2 -1 0
