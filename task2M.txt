@@ -1,0 +1,28 @@
+x = linspace(-10,10,2001);      
+
+f1 = (sin(x)).^2 .* cos(x.^2);  
+f2 = cos(x.^2) .* x;            
+f3 = sin(x.^2) .* x;           
+f4 = sin(x.^2) .* abs(x);      
+
+figure('Name','Variant 15 – Task 2','NumberTitle','off');
+
+subplot(3,2,1);                 
+  plot(x,f1,'LineWidth',1.4); grid on;
+  title('f1 = sin^2(x)\cdotcos(x^2)');
+  xlabel('x'); ylabel('f1');
+
+subplot(3,2,2);                 
+  plot(x,f3,'LineWidth',1.4); grid on;
+  title('f3 = sin(x^2)\cdotx');
+  xlabel('x'); ylabel('f3');
+
+subplot(3,2,3);                 
+  plot(x,f2,'LineWidth',1.4); grid on;
+  title('f2 = cos(x^2)\cdotx');
+  xlabel('x'); ylabel('f2');
+
+subplot(3,2,5);                 
+  plot(x,f4,'LineWidth',1.4); grid on;
+  title('f4 = sin(x^2)\cdot|x|');
+  xlabel('x'); ylabel('f4');

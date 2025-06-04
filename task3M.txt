@@ -1,0 +1,50 @@
+------------ ПЕРВЫЙ ФАЙЛ --------------
+
+%% korni.m  (подчищенная версия)
+x_f1 = linspace(-2*pi, 2*pi, 1001);   % плотнее сетка
+y_f1 = f1(x_f1);
+
+koren = [];
+for k = 2:numel(x_f1)
+    if y_f1(k-1)*y_f1(k) < 0
+        koren(end+1) = fzero(@f1, [x_f1(k-1), x_f1(k)]); %#ok<*SAGROW>
+    end
+end
+koren = unique(round(koren,10));
+
+fprintf('Корни f1(x)=0:\n');  disp(koren.');
+
+figure(1)
+plot(x_f1,y_f1,'b','LineWidth',1.4); hold on
+plot(koren,0*koren,'ro','MarkerFaceColor','r');
+grid on; xlabel('x'); ylabel('f1(x)');
+title('f1 и её корни'); hold off
+
+% --- минимум f2 ---
+x0 = [0 0];
+[x_opt,fval] = fminsearch(@f2,x0);
+
+[x1,x2] = meshgrid(linspace(-10,10,100));
+Z = arrayfun(@(a,b) f2([a b]), x1, x2);
+
+figure(2)
+surf(x1,x2,Z,'EdgeColor','none'); hold on
+plot3(x_opt(1),x_opt(2),fval,'gp','MarkerSize',10,'MarkerFaceColor','g');
+grid on; xlabel('x'); ylabel('y'); zlabel('f2(x,y)');
+title(sprintf('Минимум f2 = %.4g',fval)); hold off
+
+------------------- f1 ----------------------------
+
+% f1.m
+function y = f1(x)
+y = 10*sin(x);      % вариант 15
+end
+
+-------------------- f2 ---------------------------
+
+% f2.m
+function y = f2(v)
+y = abs(v(1)) + abs(v(2));   % вариант 15
+end
+
+
