@@ -1,100 +1,56 @@
 #include <iostream>
 #include <cmath>
-#include <functional>
-#include <iomanip>
-#include <locale.h>
+#include <locale>
 
 using namespace std;
 
-auto f = [](double x) -> double {
+double f(double x) {
     return x * x - 4 * x + 7;
-};
-
-void swann_method(double x0, double t, const function<double(double)>& func) {
-    cout << fixed << setprecision(6);
-
-    double f_minus = func(x0 - t);
-    double f_0 = func(x0);
-    double f_plus = func(x0 + t);
-
-    cout << "2): f(" << x0 - t << ")=" << f_minus
-         << ", f(" << x0 << ")=" << f_0
-         << ", f(" << x0 + t << ")=" << f_plus << "\n";
-
-    if (f_minus >= f_0 && f_0 <= f_plus) {
-        cout << "3.1): Начальный интервал найден: ["
-             << x0 - t << ", " << x0 + t << "]\n";
-        return;
-    }
-
-    if (f_minus <= f_0 && f_0 >= f_plus) {
-        cout << "3.2): Ошибка – функция не унимодальна в окрестности x0\n";
-        return;
-    }
-
-    double delta, a0, b0, x_prev, x_curr;
-    int k = 1;
-
-    if (f_minus >= f_0 && f_0 >= f_plus) {
-        delta = t;
-        a0 = x0;
-        x_prev = x0;
-        x_curr = x0 + t;
-        cout << "4.1): Движение вправо, Δ = " << delta << ", a0 = " << a0 << "\n";
-    } else {
-        delta = -t;
-        b0 = x0;
-        x_prev = x0;
-        x_curr = x0 - t;
-        cout << "4.2): Движение влево, Δ = " << delta << ", b0 = " << b0 << "\n";
-    }
-
-    while (true) {
-        double x_next = x_curr + pow(2, k - 1) * delta;
-        double f_curr = func(x_curr);
-        double f_next = func(x_next);
-
-        cout << "5) (k=" << k << ") : x" << k + 1 << " = " << x_next
-             << ", f(x" << k + 1 << ") = " << f_next << "\n";
-
-        if (f_next < f_curr) {
-            if (delta > 0)
-                a0 = x_curr;
-            else
-                b0 = x_curr;
-            x_prev = x_curr;
-            x_curr = x_next;
-            k++;
-            cout << " f убывает, продолжаем. Новая граница: "
-                 << (delta > 0 ? "a0" : "b0") << " = " << (delta > 0 ? a0 : b0) << "\n";
-        } else {
-            // Условие убывания нарушено – фиксируем вторую границу
-            if (delta > 0)
-                b0 = x_next;
-            else
-                a0 = x_next;
-            cout << "6): Условие нарушено (f перестала убывать)\n";
-            cout << "Интервал, содержащий минимум: [" << a0 << ", " << b0 << "]\n";
-            break;
-        }
-    }
 }
 
 int main() {
+    // Настройка кодировки для корректного отображения русского текста
     setlocale(LC_ALL, "Russian");
+    system("chcp 65001 > nul");
 
-    double x0, t;
-    cout << "Метод Свенна\n";
-    cout << "x0 = ";
-    cin >> x0;
-    cout << "t (>0) = ";
-    cin >> t;
+    double a, b, eps, l;
 
-    if (t <= 0) {
-        cout << "Ошибка: шаг t должен быть положительным.\n";
-        return 1;
+    // Исходные данные
+    cout << "a = ";
+    cin >> a;
+    cout << "b = ";
+    cin >> b;
+    cout << "eps = ";
+    cin >> eps;
+    cout << "l = ";
+    cin >> l;
+
+    int k = 0;
+    cout << "\nИтерация " << k << ": [" << a << ", " << b << "], len = " << (b - a) << endl;
+
+    // Алгоритм дихотомии
+    while (abs(b - a) >= l) {
+        // Шаг 3: вычисление пробных точек
+        double y = (a + b - eps) / 2.0;
+        double z = (a + b + eps) / 2.0;
+        double fy = f(y);
+        double fz = f(z);
+
+        // Шаг 4: сравнение и обновление границ
+        if (fy < fz) {
+            b = z; // Минимум слева
+        }
+        else {
+            a = y; // Минимум справа
+        }
+
+        k++;
+        cout << k << ") " << "[" << a << ", " << b << "], len = " << (b - a) << endl;
     }
 
-    swann_method(x0, t, f);
-    return 0;
+    // Результат
+    double x_min = (a + b) / 2.0;
+    cout << "Интервал неопред. - [" << a << ", " << b << "]" << endl;
+    cout << "Приближ. зн. мин. - x* = " << x_min << endl;
+    cout << "f(x*) = " << f(x_min) << endl;
 }
